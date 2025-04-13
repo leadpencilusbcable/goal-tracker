@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="index.css">
+    <script src="index.js" defer></script>
+  </head>
+  <body>
+    <iframe name="hidden_iframe" style="display: none;"></iframe>
+    <!--target is a hidden iframe to avoid redirection on submit-->
+    <form id="goal-form" action="/goals" method="post" target="hidden_iframe">
+      <table id="goal-table">
+        <caption style="font-size: 25px; text-align: left; margin-bottom: 10px;">Make goals</caption>
+        <thead>
+          <tr>
+            <th align="left">Title</th>
+            <th align="left">Notes</th>
+            <th align="left">Due Date</th>
+            <th><button class="plus-button" onclick="addRowToGoalTable()" type="button">&plus;</button></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input type="text" name="title" required/></td>
+            <td><textarea rows="1" name="notes"/></textarea></td>
+            <td><input type="date" name="due" required/></td>
+            <td>
+              <button class="minus-button" onclick="removeRowFromGoalTable(this)" type="button">&minus;</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <button id="submit-button" style="margin-top: 10px;" type="submit">
+        Submit goals
+      </button>
+    </form>
+  </body>
+</html>
+

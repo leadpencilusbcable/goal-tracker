@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema,
+  "title": "Config",
+  "description": "Schema for config used in starting application",
+  "type": "object",
+  "properties": {
+    "db": {
+      "title": "Database",
+      "description": "Database connector values",
+      "type": "object",
+      "properties": {
+        "host": {
+          "description": "host address for db",
+          "type": "string"
+        },
+        "port": {
+          "description": "port number for db",
+          "type": "integer"
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "database_name": {
+          "description": "name of db",
+          "type": "string"
+        },
+        "username": {
+          "description": "username for db",
+          "type": "string"
+        },
+        "password": {
+          "description": "password for db",
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+
