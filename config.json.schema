@@ -4,6 +4,12 @@
   "description": "Schema for config used in starting application",
   "type": "object",
   "properties": {
+    "port": {
+      "description": "port number for db",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
     "db": {
       "title": "Database",
       "description": "Database connector values",
@@ -15,7 +21,7 @@
         },
         "port": {
           "description": "port number for db",
-          "type": "integer"
+          "type": "integer",
           "minimum": 0,
           "maximum": 65535
         },

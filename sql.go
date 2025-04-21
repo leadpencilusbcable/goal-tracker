@@ -1,35 +1,16 @@
 package main
 
 import (
-	"crypto/rand"
 	"database/sql"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/argon2"
-
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
-
-type argon2_params struct {
-	time     uint32
-	memory   uint32
-	threads  uint8
-	key_len  uint32
-	salt_len uint16
-}
-
-var params = argon2_params{
-	time: 1,
-	memory: 64 * 1024,
-	threads: 4,
-	key_len: 16,
-	salt_len: 16,
-}
 
 func OpenDB(host string, port uint16, db_name string, username string, password string) (*sql.DB, error) {
 	conn := fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s sslmode=disable",
@@ -45,24 +26,65 @@ func OpenDB(host string, port uint16, db_name string, username string, password 
 	return db, err
 }
 
-func CreateUser(db *sql.DB, username string, password string) error {
+type User struct {
+	username string
+	password string
+}
+
+type pgErr struct {
+	err error
+	pg_err *pq.Error
+}
+
+func CreateUser(db *sql.DB, user *User) *pgErr {
 	query := `
 	INSERT INTO User_ (username, password_params)
 	VALUES ($1, $2)
 	`
 
-	password_params := hashPassword(password)
+	password_params := hashPassword(user.password)
 
-	_, err := db.Exec(query, username, password_params)
+	_, err := db.Exec(query, user.username, password_params)
 
 	if err != nil {
 		slog.Error(
 			"error inserting user into db",
+			"username", user.username,
 			"err", err.Error(),
 		)
+
+		pg_err := err.(*pq.Error)
+
+		return &pgErr{
+			err: err,
+			pg_err: pg_err,
+		}
 	}
 
-	return err
+	return nil
+}
+
+func GetUser(db *sql.DB, username string) (*User, error) {
+	var user User
+
+	row := db.QueryRow(
+		"SELECT username, password_params FROM User_ WHERE username = $1",
+		username,
+	)
+
+	err := row.Scan(&user.username, &user.password)
+
+	if err != nil {
+		slog.Error(
+			"error retrieving user from db",
+			"username", username,
+			"err", err.Error(),
+		)
+
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 type Goal struct {
@@ -129,33 +151,5 @@ func constructGoalInsertQuery(username string, goals *[]Goal) (string, *[]any, e
 	}
 
 	return query.String(), &params, nil
-}
-
-//Hashes a password with argon2 and returns a string
-//containing argon2 params for hashing the password
-func hashPassword(password string) string {
-	salt := generateSalt(params.salt_len)
-	hash := argon2.IDKey([]byte(password), salt, params.time, params.memory, params.threads, params.key_len)
-
-	b64_salt := base64.RawStdEncoding.EncodeToString(salt)
-	b64_hash := base64.RawStdEncoding.EncodeToString(hash)
-
-	format_str := fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
-		argon2.Version,
-		params.memory,
-		params.time,
-		params.threads,
-		b64_salt,
-		b64_hash,
-	)
-
-	return format_str
-}
-
-func generateSalt(length uint16) []byte {
-	salt := make([]byte, length)
-	rand.Read(salt)
-
-	return salt
 }
 

@@ -1,0 +1,36 @@
+.error-banner {
+  align-items: center;
+  background-color: indianred;
+  border-radius: 10px;
+  color: white;
+}
+
+.error-banner-icon {
+  font-size: x-large;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  margin-left: 10px;
+}
+
+.error-banner-text {
+  margin-left: 10px;
+}
+
+#login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: auto;
+  margin-top: 20vh;
+  max-width: 400px;
+}
+
+#login-form input {
+  height: 30px;
+}
+
+#login-button {
+  background-color: lightblue;
+  height: 50px;
+}
+

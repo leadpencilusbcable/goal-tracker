@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"net/http"
 )
@@ -72,7 +73,9 @@ func main(){
 	defer db.Close()
 
 	mux := initialiseHTTPServer(db)
-	err = http.ListenAndServe(":8000", mux)
+
+	http_str := fmt.Sprintf(":%d", conf.Port)
+	err = http.ListenAndServe(http_str, mux)
 
 	if err != nil {
 		slog.Error(err.Error())

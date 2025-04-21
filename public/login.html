@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="login.css">
+    <script src="login.js" defer></script>
+  </head>
+  <body>
+    <form id="login-form" action="/login" method="POST" onsubmit="handleLogin(event)">
+      <div class="error-banner" id="login-error" style="display: none;">
+        <p class="error-banner-icon" style="font-size: x-large;">&#9888;</p>
+        <p class="error-banner-text" id="login-error-text"></p>
+      </div>
+      <input type="text" name="username" required placeholder="Username"/>
+      <input type="password" name="password" required placeholder="Password" minlength="8"/>
+      <div style="display: flex; flex-direction: column; margin-top: 5px;">
+        <button id="login-button" type="submit">
+          Login
+        </button>
+        <a href="/register" style="margin-top: 15px;align-self: center;">Want to register instead?</a>
+      </div>
+    </form>
+  </body>
+</html>
+

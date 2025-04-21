@@ -4,7 +4,29 @@ import (
 	"fmt"
 	"regexp"
 	"testing"
+	"time"
 )
+
+func TestConstructGoalInsertQuery(t *testing.T) {
+	goals := []Goal{
+		{
+			title: "title",
+			end_date: time.Now(),
+			notes: "",
+		},
+		{
+			title: "title",
+		},
+	}
+
+	expected_query := `INSERT INTO Goal (title, start_datetime, end_date, notes, username) VALUES
+
+	`
+
+	query, params, err := constructGoalInsertQuery("username", &goals)
+
+	if(
+}
 
 func TestHashPassword(t *testing.T) {
 	format_str := hashPassword("password")
