@@ -23,7 +23,7 @@ func parseFormIntoGoals(form url.Values) (*[]Goal, error) {
 
 	for i := range form["title"] {
 		title := ""
-		end_date := time.Time{}
+		var end_date *time.Time = nil
 		notes := ""
 
 		if len(form["title"]) > i {
@@ -38,8 +38,6 @@ func parseFormIntoGoals(form url.Values) (*[]Goal, error) {
 			notes = form["notes"][i]
 		}
 
-		var err error = nil
-
 		end_date_str := ""
 
 		if len(form["due"]) > i {
@@ -47,11 +45,13 @@ func parseFormIntoGoals(form url.Values) (*[]Goal, error) {
 		}
 
 		if end_date_str != "" {
-			end_date, err = time.Parse(time.DateOnly, end_date_str)
+			end, err := time.Parse(time.DateOnly, end_date_str)
 
 			if err != nil {
 				return nil, err
 			}
+
+			end_date = &end
 		}
 
 		goals[i] = Goal{

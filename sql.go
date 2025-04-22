@@ -89,7 +89,7 @@ func GetUser(db *sql.DB, username string) (*User, error) {
 
 type Goal struct {
 	title string
-	end_date time.Time
+	end_date *time.Time
 	notes string
 }
 
