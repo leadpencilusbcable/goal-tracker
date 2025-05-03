@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
+	"fmt"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -94,7 +97,7 @@ func handleGoals(db *sql.DB) http.HandlerFunc {
 		}
 
 		//TODO Replace constant with username retrieved from auth
-		err = CreateGoals(db, "username", goals)
+		err = InsertGoals(db, "username", goals)
 
 		if err != nil {
 			http.Error(w, "error posting goals", http.StatusInternalServerError)
@@ -105,7 +108,50 @@ func handleGoals(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func generateLoginUserTemplate(username string) (*bytes.Buffer, error) {
+	tmpl, err := template.ParseFiles("templates/login.html")
+
+	if err != nil {
+		slog.Error(
+			"error reading templates/login.html file",
+			"err", err.Error(),
+			"response_code", http.StatusInternalServerError,
+		)
+
+		return nil, err
+	}
+
+	user := struct{ Username string }{ Username: username }
+
+	buf := bytes.Buffer{}
+	err = tmpl.Execute(&buf, user)
+
+	if err != nil {
+		slog.Error(
+			"error executing login template",
+			"err", err.Error(),
+			"response_code", http.StatusInternalServerError,
+		)
+
+		return nil, err
+	}
+
+	return &buf, nil
+}
+
 func handleLoginGet(w http.ResponseWriter, r *http.Request) {
+	if username, ok := r.URL.Query()["username"]; ok {
+		buf, err := generateLoginUserTemplate(username[0])
+
+		if err != nil {
+			http.Error(w, "unknown error", http.StatusInternalServerError)
+			return
+		}
+
+		buf.WriteTo(w)
+		return
+	}
+
 	content, err := os.ReadFile("public/login.html")
 
 	if err != nil {
@@ -157,6 +203,47 @@ func parseFormIntoUser(form url.Values) (*User, error) {
 	return &user, nil
 }
 
+func validateUserAgainstDB(db *sql.DB, user *User) (err_msg string, status_code int) {
+  db_user, err := GetUser(db, user.username)
+
+  if errors.Is(err, sql.ErrNoRows) {
+    slog.Debug(
+      "username mismatch",
+      "username", user.username,
+      "err", err.Error(),
+      "response_code", http.StatusUnauthorized,
+    )
+
+    return "Incorrect username or password", http.StatusUnauthorized
+  } else if err != nil {
+    return "Error validating user", http.StatusInternalServerError
+  }
+
+  match, err := comparePasswordWithHash(user.password, db_user.password)
+
+  if err != nil {
+    slog.Error(
+      "error comparing passwords",
+      "err", err.Error(),
+      "response_code", http.StatusInternalServerError,
+    )
+
+    return "Error validating user", http.StatusInternalServerError
+  }
+
+  if !match {
+    slog.Debug(
+      "password mismatch",
+      "username", user.username,
+      "response_code", http.StatusUnauthorized,
+    )
+
+    return "Incorrect username or password", http.StatusUnauthorized
+  }
+
+  return "", 0
+}
+
 func handleLoginPost(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
@@ -187,47 +274,35 @@ func handleLoginPost(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		db_user, err := GetUser(db, user.username)
+      err_str, status_code := validateUserAgainstDB(db, user)
 
-		if errors.Is(err, sql.ErrNoRows) {
-			slog.Debug(
-				"username mismatch",
-				"username", user.username,
-				"err", err.Error(),
-				"response_code", http.StatusUnauthorized,
-			)
-
-			http.Error(w, "Incorrect username or password", http.StatusUnauthorized)
+      if status_code != 0 {
+			http.Error(w, err_str, status_code)
 			return
-		} else if err != nil {
-			http.Error(w, "error validating user", http.StatusInternalServerError)
-			return
-		}
+      }
 
-		match, err := comparePasswordWithHash(user.password, db_user.password)
+		session_id, err := CreateUserSessionId(db, user.username)
 
 		if err != nil {
 			slog.Error(
-				"error comparing passwords",
-				"err", err.Error(),
+				"error generating session id",
+				"username", user.username,
 				"response_code", http.StatusInternalServerError,
 			)
 
-			http.Error(w, "error validating user", http.StatusInternalServerError)
+			http.Error(w, "Error validating user", http.StatusInternalServerError)
 			return
 		}
 
-		if !match {
-			slog.Debug(
-				"password mismatch",
-				"username", user.username,
-				"response_code", http.StatusUnauthorized,
-			)
+		slog.Info(
+			"successfully logged in user",
+			"username", user.username,
+			"response_code", http.StatusOK,
+		)
 
-			http.Error(w, "Incorrect username or password", http.StatusUnauthorized)
-			return
-		}
+		cookie_str := fmt.Sprintf("session_id=%s", session_id)
 
+		w.Header().Add("Set-Cookie", cookie_str)
 		w.Write([]byte("OK"))
 	}
 }
@@ -288,7 +363,7 @@ func handleRegisterPost(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		pg_err := CreateUser(db, user)
+		pg_err := InsertUser(db, user)
 
 		if pg_err != nil {
 			if pg_err.pg_err.Code == "23505" {
@@ -311,34 +386,73 @@ func handleRegisterPost(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func handleRegisterGet(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		content, err := os.ReadFile("public/register.html")
+func handleRegisterGet(w http.ResponseWriter, r *http.Request) {
+	content, err := os.ReadFile("public/register.html")
+
+	if err != nil {
+		slog.Error(
+			"error reading public/register.html file",
+			"err", err.Error(),
+			"response_code", http.StatusInternalServerError,
+		)
+
+		http.Error(w, "unknown error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(content)
+}
+
+func authorisationMiddleware(next http.Handler, db *sql.DB) http.Handler {
+	handler_func := func(w http.ResponseWriter, r *http.Request) {
+		session_id, err := r.Cookie("session_id")
 
 		if err != nil {
-			slog.Error(
-				"error reading public/register.html file",
-				"err", err.Error(),
-				"response_code", http.StatusInternalServerError,
-			)
-
-			http.Error(w, "unknown error", http.StatusInternalServerError)
+			slog.Info("session_id cookie not provided or in incorrect format", "response_code", http.StatusSeeOther)
+			w.Header().Add("Location", "/login")
+			http.Error(w, "session_id cookie not provided", http.StatusSeeOther)
 			return
 		}
 
-		w.Write(content)
+		username, err := VerifyUser(db, session_id.Value)
+
+		if err != nil {
+			slog.Error(
+				"error verifying user session id",
+				"err", err.Error(),
+				"response_code", http.StatusInternalServerError,
+			)
+		}
+
+		if username == "" {
+			slog.Info("session_id cookie doesn't exist or has expired", "response_code", http.StatusSeeOther)
+			w.Header().Add("Location", "/login")
+			http.Error(w, "session_id cookie doesn't exist or has expired", http.StatusSeeOther)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	}
+
+	return http.HandlerFunc(handler_func)
 }
 
 func initialiseHTTPServer(db *sql.DB) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.Handle("GET /", http.FileServer(http.Dir("public")))
+	home_handler_func := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./templates/index.html")
+	})
+
+   home_handler := authorisationMiddleware(home_handler_func, db)
+
+	mux.Handle("GET /", home_handler)
+	mux.Handle("GET /public/", http.StripPrefix("/public/", http.FileServer(http.Dir("./public/"))))
 	mux.HandleFunc("GET /ping", handlePing)
 	mux.HandleFunc("GET /goals", handleGoals(db))
 	mux.HandleFunc("GET /login", handleLoginGet)
 	mux.HandleFunc("POST /login", handleLoginPost(db))
-	mux.HandleFunc("GET /register", handleRegisterGet(db))
+	mux.HandleFunc("GET /register", handleRegisterGet)
 	mux.HandleFunc("POST /register", handleRegisterPost(db))
 
 	return mux

@@ -1,3 +1,14 @@
+.success-banner {
+  align-items: center;
+  background-color: forestgreen;
+  border-radius: 10px;
+  color: white;
+}
+
+.success-banner-text {
+  margin-left: 10px;
+}
+
 .error-banner {
   align-items: center;
   background-color: indianred;

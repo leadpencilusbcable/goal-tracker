@@ -13,3 +13,10 @@ CREATE TABLE Goal (
   username VARCHAR(100) REFERENCES User_(username) NOT NULL
 );
 
+CREATE TABLE SessionId (
+  username VARCHAR(100) REFERENCES User_(username) NOT NULL PRIMARY KEY REFERENCES User_(username),
+  session_id_sha256 BYTEA
+);
+
+CREATE INDEX idx_session_id_sha256 ON SessionId (session_id_sha256);
+

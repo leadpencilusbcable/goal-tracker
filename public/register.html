@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="stylesheet" href="login.css">
-    <script src="login.js" defer></script>
+    <link rel="stylesheet" href="/public/login.css">
+    <script src="/public/register.js" defer></script>
   </head>
   <body>
-    <form id="login-form" action="/register" method="POST" onsubmit="handleLogin(event)">
+    <form id="login-form" action="/register" method="POST" onsubmit="handleRegister(event)">
       <div class="error-banner" id="login-error" style="display: none;">
         <p class="error-banner-icon" style="font-size: x-large;">&#9888;</p>
         <p class="error-banner-text" id="login-error-text"></p>

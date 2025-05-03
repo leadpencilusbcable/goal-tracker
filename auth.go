@@ -2,14 +2,13 @@ package main
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"errors"
-	"sync"
-	"time"
 )
 
 const SESSION_ID_LEN_BYTE = 64
-const SESSION_ID_EXPIRE_HOURS = 24
 
 //returns the session id as a hex string.
 //therefore returned string's len will be 2 times that of byte_len
@@ -27,37 +26,31 @@ func generateSessionId(byte_len int) (string, error) {
 	return hex_session_id, nil
 }
 
-//keyed by user
-var session_ids map[string]string = map[string]string{}
-var session_ids_mu sync.RWMutex
+//returns empty string in case of bad auth token
+func VerifyUser(db *sql.DB, session_id string) (username string, err error) {
+	hash := sha256.Sum256([]byte(session_id))
+	username, err = GetSessionId(db, hash)
 
-func VerifyUser(session_id string) bool {
-	session_ids_mu.RLock()
-	_, has_session_id := session_ids[session_id]
-	session_ids_mu.RUnlock()
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		} else {
+			return "", err
+		}
+	}
 
-	return has_session_id
+	return username, nil
 }
 
-func removeUserSessionId(session_id string) {
-	session_ids_mu.Lock()
-	delete(session_ids, session_id)
-	session_ids_mu.Unlock()
-}
-
-func CreateUserSessionId(username string, expires time.Duration) (string, error) {
+func CreateUserSessionId(db *sql.DB, username string) (string, error) {
 	session_id, err := generateSessionId(SESSION_ID_LEN_BYTE)
 
 	if err != nil {
 		return "", err
 	}
 
-	session_ids_mu.Lock()
-	session_ids[session_id] = username
-	session_ids_mu.Unlock()
-
-	remove_func := func() { removeUserSessionId(session_id) }
-	time.AfterFunc(expires, remove_func)
+	hash := sha256.Sum256([]byte(session_id))
+	UpsertAuthToken(db, username, hash)
 
 	return session_id, nil
 }

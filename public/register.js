@@ -1,7 +1,7 @@
 /**
  * @param {Event} event
  */
-async function handleLogin(event){
+async function handleRegister(event){
   event.preventDefault();
 
   const form = event.target;
@@ -16,11 +16,9 @@ async function handleLogin(event){
   const res_body = await res.text();
 
   if(res.ok){
-    window.location.href = "/";
+    window.location.href = "/login?username=" + formData.get("username");
   } else {
     document.getElementById("login-error").style.display = "flex";
     document.getElementById("login-error-text").innerText = res_body;
-
-    document.getElementById("login-success").style.display = "none";
   }
 }

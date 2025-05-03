@@ -36,7 +36,7 @@ type pgErr struct {
 	pg_err *pq.Error
 }
 
-func CreateUser(db *sql.DB, user *User) *pgErr {
+func InsertUser(db *sql.DB, user *User) *pgErr {
 	query := `
 	INSERT INTO User_ (username, password_params)
 	VALUES ($1, $2)
@@ -93,7 +93,7 @@ type Goal struct {
 	notes string
 }
 
-func CreateGoals(db *sql.DB, username string, goals *[]Goal) error {
+func InsertGoals(db *sql.DB, username string, goals *[]Goal) error {
 	query, params, err := constructGoalInsertQuery(username, goals)
 
 	if err != nil {
@@ -151,5 +151,53 @@ func constructGoalInsertQuery(username string, goals *[]Goal) (string, *[]any, e
 	}
 
 	return query.String(), &params, nil
+}
+
+func UpsertAuthToken(db *sql.DB, username string, session_id_sha256 [32]byte) error {
+	if username == "" {
+		return errors.New("empty username when attempting to insert auth token")
+	} else if len(session_id_sha256) != 32 {
+		return errors.New("invalid token_sha256 []byte when attempting to insert auth token")
+	}
+
+	query := `
+	INSERT INTO SessionId (username, session_id_sha256)
+	VALUES ($1, $2)
+	ON CONFLICT (username)
+	DO UPDATE SET session_id_sha256 = $2
+	`
+
+	_, err := db.Exec(query, username, session_id_sha256[:])
+
+	if err != nil {
+		slog.Error(
+			"error inserting auth_token into db",
+			"username", username,
+			"err", err.Error(),
+		)
+	}
+
+	return err
+}
+
+func GetSessionId(db *sql.DB, session_id_sha256 [32]byte) (string, error) {
+	row := db.QueryRow(
+		"SELECT username FROM SessionId WHERE session_id_sha256 = $1",
+		session_id_sha256[:],
+	)
+
+	var username string
+	err := row.Scan(&username)
+
+	if err != nil {
+		slog.Error(
+			"error retrieving session id from db",
+			"err", err.Error(),
+		)
+
+		return "", err
+	}
+
+	return username, nil
 }
 
