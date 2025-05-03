@@ -8,7 +8,8 @@ import (
 )
 
 type Config struct {
-	Port          uint16 `json:"port"`
+	Host string `json:"host"`
+	Port uint16 `json:"port"`
 	Db struct {
 		Host          string `json:"host"`
 		Port          uint16 `json:"port"`
@@ -43,6 +44,11 @@ func parseConfig(path string) (*Config, error) {
 }
 
 func validateConfig(conf *Config) error {
+	if conf.Host == "" {
+		err := errors.New("config is missing host value")
+		slog.Error(err.Error())
+		return err
+	}
 	if conf.Port == 0 {
 		err := errors.New("config is missing port value")
 		slog.Error(err.Error())

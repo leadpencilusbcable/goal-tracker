@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -96,8 +97,9 @@ func handleGoals(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		//TODO Replace constant with username retrieved from auth
-		err = InsertGoals(db, "username", goals)
+		username := r.Context().Value("username").(string)
+
+		err = InsertGoals(db, username, goals)
 
 		if err != nil {
 			http.Error(w, "error posting goals", http.StatusInternalServerError)
@@ -431,7 +433,8 @@ func authorisationMiddleware(next http.Handler, db *sql.DB) http.Handler {
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		ctx := context.WithValue(r.Context(), "username", username)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 
 	return http.HandlerFunc(handler_func)
@@ -446,10 +449,12 @@ func initialiseHTTPServer(db *sql.DB) *http.ServeMux {
 
    home_handler := authorisationMiddleware(home_handler_func, db)
 
-	mux.Handle("GET /", home_handler)
+	goals_handler := authorisationMiddleware(handleGoals(db), db)
+
+	mux.Handle("GET /{$}", home_handler)
 	mux.Handle("GET /public/", http.StripPrefix("/public/", http.FileServer(http.Dir("./public/"))))
+	mux.Handle("POST /goals", goals_handler)
 	mux.HandleFunc("GET /ping", handlePing)
-	mux.HandleFunc("GET /goals", handleGoals(db))
 	mux.HandleFunc("GET /login", handleLoginGet)
 	mux.HandleFunc("POST /login", handleLoginPost(db))
 	mux.HandleFunc("GET /register", handleRegisterGet)

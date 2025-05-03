@@ -74,7 +74,7 @@ func main(){
 
 	mux := initialiseHTTPServer(db)
 
-	http_str := fmt.Sprintf(":%d", conf.Port)
+	http_str := fmt.Sprintf("%s:%d", conf.Host, conf.Port)
 	err = http.ListenAndServe(http_str, mux)
 
 	if err != nil {

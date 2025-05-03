@@ -153,7 +153,7 @@ func constructGoalInsertQuery(username string, goals *[]Goal) (string, *[]any, e
 	return query.String(), &params, nil
 }
 
-func UpsertAuthToken(db *sql.DB, username string, session_id_sha256 [32]byte) error {
+func UpsertSessionId(db *sql.DB, username string, session_id_sha256 [32]byte) error {
 	if username == "" {
 		return errors.New("empty username when attempting to insert auth token")
 	} else if len(session_id_sha256) != 32 {
@@ -166,6 +166,11 @@ func UpsertAuthToken(db *sql.DB, username string, session_id_sha256 [32]byte) er
 	ON CONFLICT (username)
 	DO UPDATE SET session_id_sha256 = $2
 	`
+
+	slog.Debug(
+		"executing db query",
+		"query", query,
+	)
 
 	_, err := db.Exec(query, username, session_id_sha256[:])
 

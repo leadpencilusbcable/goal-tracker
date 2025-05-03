@@ -50,7 +50,7 @@ func CreateUserSessionId(db *sql.DB, username string) (string, error) {
 	}
 
 	hash := sha256.Sum256([]byte(session_id))
-	UpsertAuthToken(db, username, hash)
+	UpsertSessionId(db, username, hash)
 
 	return session_id, nil
 }

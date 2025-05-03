@@ -106,7 +106,7 @@ func TestValidateCompleteConfig(t *testing.T) {
 
 	defer file.Close()
 
-	_, err = file.Write([]byte("{ \"port\": 1800, \"db\": { \"host\": \"localhost\", \"port\": 5432, \"database_name\": \"goal\", \"username\": \"username\", \"password\": \"username\" } }"))
+	_, err = file.Write([]byte("{ \"host\": \"localhost\", \"port\": 1800, \"db\": { \"host\": \"localhost\", \"port\": 5432, \"database_name\": \"goal\", \"username\": \"username\", \"password\": \"username\" } }"))
 
 	if err != nil {
 		t.Error("error writing to config file for test")

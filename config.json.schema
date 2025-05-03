@@ -4,8 +4,12 @@
   "description": "Schema for config used in starting application",
   "type": "object",
   "properties": {
+    "host": {
+      "description": "host that server runs on",
+      "type": "string"
+    },
     "port": {
-      "description": "port number for db",
+      "description": "port number that server runs on",
       "type": "integer",
       "minimum": 0,
       "maximum": 65535
