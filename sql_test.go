@@ -13,26 +13,30 @@ func TestConstructGoalInsertQuery(t *testing.T) {
 	goals := []GoalInsert{
 		{
 			title: "title",
+			start_date: &now,
 			end_date: &now,
 			notes: "",
 		},
 		{
 			title: "title",
+			start_date: &now,
 			end_date: nil,
 			notes: "notes",
 		},
 	}
 
-	expected_query := `INSERT INTO Goal (title, start_datetime, end_date, notes, username) VALUES ($1, NOW(), $2, $3, $4), ($5, NOW(), $6, $7, $8)`
+	expected_query := `INSERT INTO Goal (title, start_date, end_date, notes, username) VALUES ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10)`
 
 	var nil_time *time.Time = nil
 
 	expected_params := []any{
 		"title",
 		&now,
+		&now,
 		"",
 		"username",
 		"title",
+		&now,
 		nil_time,
 		"notes",
 		"username",
