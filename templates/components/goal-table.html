@@ -1,0 +1,26 @@
+<table id="goal-display-table">
+  <caption style="font-size: 25px; text-align: left; margin-bottom: 10px;">
+    Goals ending {{.StartDate}} - {{.EndDate}}
+  </caption>
+  <thead>
+    <tr>
+      <th align="left">Title</th>
+      <th align="left">Status</th>
+      <th align="left">Notes</th>
+      <th align="left" style="min-width: 95px;">Start Date</th>
+      <th align="left" style="min-width: 85px;">Due Date</th>
+    </tr>
+  </thead>
+  <tbody>
+  {{range .GoalDisplay}}
+    <tr>
+      <td align="left">{{.Title}}</td>
+      <td align="left">{{.Status}}</td>
+      <td align="left">{{.Notes}}</td>
+      <td align="left">{{.StartDate}}</td>
+      <td align="left">{{.DueDate}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+

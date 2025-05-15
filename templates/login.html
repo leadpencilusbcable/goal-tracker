@@ -3,15 +3,19 @@
   <head>
     <link rel="stylesheet" href="/login.css">
     <script src="/login.js" defer></script>
-    <link rel="icon" href="/icon.svg" type="image/svg"/>
   </head>
   <body>
     <form id="login-form" action="/login" method="POST" onsubmit="handleLogin(event)">
+      <div class="success-banner" id="login-success">
+        <p class="success-banner-text" id="login-success-text">
+          Successfully created user {{.Username}}
+        </p>
+      </div>
       <div class="error-banner" id="login-error" style="display: none;">
         <p class="error-banner-icon" style="font-size: x-large;">&#9888;</p>
         <p class="error-banner-text" id="login-error-text"></p>
       </div>
-      <input type="text" name="username" required placeholder="Username"/>
+      <input type="text" name="username" required placeholder="Username" value="{{.Username}}"/>
       <input type="password" name="password" required placeholder="Password"/>
       <div style="display: flex; flex-direction: column; margin-top: 5px;">
         <button id="login-button" type="submit">

@@ -1,3 +1,38 @@
+.loading-spinner {
+  border: 8px solid white;
+  border-top: 8px solid cornflowerblue;
+  border-radius: 50%;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+#navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid black;
+}
+
+#navbar-logo {
+  display: flex;
+  margin-top: 5px;
+  margin-bottom: 7px;
+  margin-left: 5px
+}
+
+#navbar-logo > p {
+  margin-left: 8px;
+}
+
+#navbar-logout {
+  height: 50%;
+  margin-right: 20px;
+}
+
 td input, textarea {
   font-size: 14px;
 }
@@ -14,9 +49,34 @@ td input, textarea {
   color: white;
 }
 
-table, th, td {
-  border: 1px solid black;
+.minus-button[disabled] {
+  background-color: grey;
+  border-radius: 3px;
+  color: white;
+}
+
+#goal-display-table {
+  width: 75%;
+}
+
+#goal-display-table td {
+  font-size: 14px;
+}
+
+#goal-display-table {
   border-collapse: collapse;
+}
+
+#goal-display-table th, #goal-display-table td {
+  border: 1px solid black;
+}
+
+#goal-input-table {
+  border-collapse: collapse;
+}
+
+#goal-input-table th, #goal-input-table td {
+  border: 1px solid black;
 }
 
 th, td {

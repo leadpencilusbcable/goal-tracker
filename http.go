@@ -14,20 +14,23 @@ import (
 	"time"
 )
 
+var templates *template.Template
+
 func handlePing(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("healthy"))
 }
 
-func parseFormIntoGoals(form url.Values) (*[]Goal, error) {
+func parseFormIntoGoals(form url.Values) (*[]GoalInsert, error) {
 	if len(form["title"]) == 0 {
 		return nil, errors.New("no goals")
 	}
 
-	goals := make([]Goal, len(form["title"]))
+	goals := make([]GoalInsert, len(form["title"]))
 
 	for i := range form["title"] {
 		title := ""
 		var end_date *time.Time = nil
+		var start_date *time.Time = nil
 		notes := ""
 
 		if len(form["title"]) > i {
@@ -36,6 +39,24 @@ func parseFormIntoGoals(form url.Values) (*[]Goal, error) {
 
 		if title == "" {
 			return nil, errors.New("goal does not have a title")
+		}
+
+		start_date_str := ""
+
+		if len(form["start"]) > i {
+			start_date_str = form["start"][i]
+		}
+
+		if start_date_str != "" {
+			start, err := time.Parse(time.DateOnly, start_date_str)
+
+			if err != nil {
+				return nil, err
+			}
+
+			start_date = &start
+		} else {
+			return nil, errors.New("goal does not have a start")
 		}
 
 		if len(form["notes"]) > i {
@@ -58,10 +79,11 @@ func parseFormIntoGoals(form url.Values) (*[]Goal, error) {
 			end_date = &end
 		}
 
-		goals[i] = Goal{
-			title,
-			end_date,
-			notes,
+		goals[i] = GoalInsert{
+			title: title,
+			start_date: start_date,
+			end_date: end_date,
+			notes: notes,
 		}
 	}
 
@@ -111,22 +133,10 @@ func handleGoals(db *sql.DB) http.HandlerFunc {
 }
 
 func generateLoginUserTemplate(username string) (*bytes.Buffer, error) {
-	tmpl, err := template.ParseFiles("templates/login.html")
-
-	if err != nil {
-		slog.Error(
-			"error reading templates/login.html file",
-			"err", err.Error(),
-			"response_code", http.StatusInternalServerError,
-		)
-
-		return nil, err
-	}
-
 	user := struct{ Username string }{ Username: username }
 
 	buf := bytes.Buffer{}
-	err = tmpl.Execute(&buf, user)
+	err := templates.ExecuteTemplate(&buf, "login.html", user)
 
 	if err != nil {
 		slog.Error(
@@ -405,6 +415,40 @@ func handleRegisterGet(w http.ResponseWriter, r *http.Request) {
 	w.Write(content)
 }
 
+type GoalDisplay struct {
+	Title string
+	Status string
+	Notes string
+	StartDate string
+	DueDate string
+}
+
+func goalsToDisplayGoals(goals []Goal) []GoalDisplay {
+	goal_display := make([]GoalDisplay, len(goals))
+
+	for i, goal := range goals {
+		goal_display[i] = GoalDisplay{
+			Title: goal.title,
+			Status: "",
+			Notes: goal.notes,
+			StartDate: goal.start_date.Format("2006-01-02"),
+			DueDate: goal.end_date.Format("2006-01-02"),
+		}
+	}
+
+	return goal_display
+}
+
+type GoalDisplayTemplate struct {
+	StartDate string
+	EndDate string
+	GoalDisplay []GoalDisplay
+}
+
+func handleHomePage(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "public/index.html")
+}
+
 func authorisationMiddleware(next http.Handler, db *sql.DB) http.Handler {
 	handler_func := func(w http.ResponseWriter, r *http.Request) {
 		session_id, err := r.Cookie("session_id")
@@ -440,20 +484,106 @@ func authorisationMiddleware(next http.Handler, db *sql.DB) http.Handler {
 	return http.HandlerFunc(handler_func)
 }
 
+func initialiseTemplates() *template.Template {
+	templates, err := template.ParseFiles("templates/login.html")
+
+	if err != nil {
+		slog.Error(
+			"error parsing templates/login.html",
+			"err", err.Error(),
+		)
+
+		return nil
+	}
+
+	_, err = templates.ParseFiles("templates/components/goal-table.html")
+
+	if err != nil {
+		slog.Error(
+			"error parsing templates/components/goal-table.html",
+			"err", err.Error(),
+		)
+
+		return nil
+	}
+
+	return templates
+}
+
+func handleGoalsGet(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		username := r.Context().Value("username").(string)
+
+		start := time.Now()
+		end := time.Now().Add(time.Hour * 24 * 7)
+
+		goals, err := GetGoals(
+			db,
+			username,
+			&start,
+			&end,
+			nil,
+		)
+
+		if err != nil {
+			slog.Error(
+				"error retrieving goals",
+				"err", err.Error(),
+				"response_code", http.StatusInternalServerError,
+			)
+
+			http.Error(w, "error retrieving goals", http.StatusInternalServerError)
+			return
+		}
+
+		slog.Debug(
+			"goals for user",
+			"goals", goals,
+			"username", username,
+		)
+
+		if len(goals) == 0 {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		goal_display := goalsToDisplayGoals(goals)
+
+		template_data := GoalDisplayTemplate{
+			StartDate: start.Format("2006-01-02"),
+			EndDate: end.Format("2006-01-02"),
+			GoalDisplay: goal_display,
+		}
+
+		buf := bytes.Buffer{}
+		err = templates.ExecuteTemplate(&buf, "goal-table.html", template_data)
+
+		if err != nil {
+			http.Error(w, "unknown error", http.StatusInternalServerError)
+			return
+		}
+
+		buf.WriteTo(w)
+	}
+}
+
 func initialiseHTTPServer(db *sql.DB) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	home_handler_func := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./templates/index.html")
-	})
+	templates = initialiseTemplates()
 
-   home_handler := authorisationMiddleware(home_handler_func, db)
+	if templates == nil {
+		return nil
+	}
 
-	goals_handler := authorisationMiddleware(handleGoals(db), db)
+	home_handler := authorisationMiddleware(http.HandlerFunc(handleHomePage), db)
+	goals_post_handler := authorisationMiddleware(handleGoals(db), db)
+	goals_get_handler := authorisationMiddleware(handleGoalsGet(db), db)
 
+	mux.Handle("GET /", http.FileServer(http.Dir("./public")))
 	mux.Handle("GET /{$}", home_handler)
-	mux.Handle("GET /public/", http.StripPrefix("/public/", http.FileServer(http.Dir("./public/"))))
-	mux.Handle("POST /goals", goals_handler)
+	mux.Handle("GET /goals", goals_get_handler)
+	mux.Handle("POST /goals", goals_post_handler)
 	mux.HandleFunc("GET /ping", handlePing)
 	mux.HandleFunc("GET /login", handleLoginGet)
 	mux.HandleFunc("POST /login", handleLoginPost(db))

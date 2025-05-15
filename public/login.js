@@ -20,7 +20,5 @@ async function handleLogin(event){
   } else {
     document.getElementById("login-error").style.display = "flex";
     document.getElementById("login-error-text").innerText = res_body;
-
-    document.getElementById("login-success").style.display = "none";
   }
 }

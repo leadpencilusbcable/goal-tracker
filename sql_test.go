@@ -10,7 +10,7 @@ import (
 func TestConstructGoalInsertQuery(t *testing.T) {
 	now := time.Now()
 
-	goals := []Goal{
+	goals := []GoalInsert{
 		{
 			title: "title",
 			end_date: &now,

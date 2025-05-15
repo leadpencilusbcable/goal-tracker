@@ -89,11 +89,84 @@ func GetUser(db *sql.DB, username string) (*User, error) {
 
 type Goal struct {
 	title string
+	start_date *time.Time
+	end_date *time.Time
+	completed_datetime *time.Time
+	notes string
+}
+
+func GetGoals(
+	db *sql.DB,
+	username string,
+	start_date *time.Time,
+	end_date *time.Time,
+	title *string,
+) ([]Goal, error) {
+	if start_date == nil {
+		return nil, errors.New("start_date cannot be nil")
+	}
+	if end_date == nil {
+		return nil, errors.New("end_date cannot be nil")
+	}
+
+	query := `SELECT title, start_date, end_date, completed_datetime, notes
+	FROM Goal WHERE username = $1 AND (end_date BETWEEN $2 AND $3)`
+
+	slog.Info(
+		"executing db query",
+		"query", query,
+	)
+
+	rows, err := db.Query(
+		query,
+		username,
+		start_date,
+		end_date,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var goals []Goal
+
+	for rows.Next() {
+		var goal Goal
+
+		err = rows.Scan(
+			&goal.title,
+			&goal.start_date,
+			&goal.end_date,
+			&goal.completed_datetime,
+			&goal.notes,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		goals = append(goals, goal)
+	}
+
+	err = rows.Err()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return goals, nil
+}
+
+type GoalInsert struct {
+	title string
+	start_date *time.Time
 	end_date *time.Time
 	notes string
 }
 
-func InsertGoals(db *sql.DB, username string, goals *[]Goal) error {
+func InsertGoals(db *sql.DB, username string, goals *[]GoalInsert) error {
 	query, params, err := constructGoalInsertQuery(username, goals)
 
 	if err != nil {
@@ -105,7 +178,7 @@ func InsertGoals(db *sql.DB, username string, goals *[]Goal) error {
 		return err
 	}
 
-	slog.Debug(
+	slog.Info(
 		"executing db query",
 		"query", query,
 	)
@@ -123,27 +196,28 @@ func InsertGoals(db *sql.DB, username string, goals *[]Goal) error {
 }
 
 //returns the query string and the params
-func constructGoalInsertQuery(username string, goals *[]Goal) (string, *[]any, error) {
-	if len(*goals) == 0 {
+func constructGoalInsertQuery(username string, goals *[]GoalInsert) (string, *[]any, error) {
+	if goals == nil || len(*goals) == 0 {
 		return "", nil, errors.New("no goals provided to construct query")
 	}
 
 	var query strings.Builder
 	params := []any{}
 
-	query.WriteString("INSERT INTO Goal (title, start_datetime, end_date, notes, username) VALUES ")
+	query.WriteString("INSERT INTO Goal (title, start_date, end_date, notes, username) VALUES ")
 
 	for i, goal := range *goals {
-		value_str := fmt.Sprintf("($%d, NOW(), $%d, $%d, $%d)",
-			i * 4 + 1,
-			i * 4 + 2,
-			i * 4 + 3,
-			i * 4 + 4,
+		value_str := fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)",
+			i * 5 + 1,
+			i * 5 + 2,
+			i * 5 + 3,
+			i * 5 + 4,
+			i * 5 + 5,
 		)
 
 		query.WriteString(value_str)
 
-		params = append(params, goal.title, goal.end_date, goal.notes, username)
+		params = append(params, goal.title, goal.start_date, goal.end_date, goal.notes, username)
 
 		if i != len(*goals) - 1 {
 			query.WriteString(", ")
@@ -167,7 +241,7 @@ func UpsertSessionId(db *sql.DB, username string, session_id_sha256 [32]byte) er
 	DO UPDATE SET session_id_sha256 = $2
 	`
 
-	slog.Debug(
+	slog.Info(
 		"executing db query",
 		"query", query,
 	)
