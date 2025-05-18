@@ -14,7 +14,7 @@ CREATE TABLE Goal (
 );
 
 CREATE TABLE SessionId (
-  username VARCHAR(100) REFERENCES User_(username) NOT NULL PRIMARY KEY REFERENCES User_(username),
+  username VARCHAR(100) NOT NULL PRIMARY KEY REFERENCES User_(username),
   session_id_sha256 BYTEA NOT NULL
 );
 

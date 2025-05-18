@@ -233,11 +233,29 @@ func constructGoalInsertQuery(username string, goals *[]GoalInsert) (string, *[]
 	return query.String(), &params, nil
 }
 
+func DeleteSessionId(db *sql.DB, session_id_sha256 [32]byte) error {
+	query := "DELETE FROM SessionId WHERE session_id_sha256=$1"
+
+	slog.Info(
+		"executing db query",
+		"query", query,
+	)
+
+	_, err := db.Exec(query, session_id_sha256[:])
+
+	if err != nil {
+		slog.Error(
+			"error deleting session id from db",
+			"err", err.Error(),
+		)
+	}
+
+	return err
+}
+
 func UpsertSessionId(db *sql.DB, username string, session_id_sha256 [32]byte) error {
 	if username == "" {
 		return errors.New("empty username when attempting to insert auth token")
-	} else if len(session_id_sha256) != 32 {
-		return errors.New("invalid token_sha256 []byte when attempting to insert auth token")
 	}
 
 	query := `
@@ -256,7 +274,7 @@ func UpsertSessionId(db *sql.DB, username string, session_id_sha256 [32]byte) er
 
 	if err != nil {
 		slog.Error(
-			"error inserting auth_token into db",
+			"error inserting session id into db",
 			"username", username,
 			"err", err.Error(),
 		)

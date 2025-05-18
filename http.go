@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -179,6 +180,36 @@ func handleLoginGet(w http.ResponseWriter, r *http.Request) {
 
 	w.Write(content)
 	return
+}
+
+func handleLogoutPost(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session_id, err := r.Cookie("session_id")
+
+		if err != nil {
+			slog.Error(
+				"error getting session_id",
+				"err", err.Error(),
+				"response_code", http.StatusInternalServerError,
+			)
+		}
+
+		hash := sha256.Sum256([]byte(session_id.String()))
+		err = DeleteSessionId(db, hash)
+
+		if err != nil {
+			err_msg := "unknown error"
+
+			slog.Error(
+				err_msg,
+				"err", err.Error(),
+				"response_code", http.StatusInternalServerError,
+			)
+
+			http.Error(w, err_msg, http.StatusInternalServerError)
+			return
+		}
+	}
 }
 
 func parseFormIntoUser(form url.Values) (*User, error) {
@@ -622,11 +653,13 @@ func initialiseHTTPServer(db *sql.DB) *http.ServeMux {
 	home_handler := authorisationMiddleware(http.HandlerFunc(handleHomePage), db)
 	goals_post_handler := authorisationMiddleware(handleGoals(db), db)
 	goals_get_handler := authorisationMiddleware(handleGoalsGet(db), db)
+	logout_post_handler := authorisationMiddleware(handleLogoutPost(db), db)
 
 	mux.Handle("GET /", http.FileServer(http.Dir("./public")))
 	mux.Handle("GET /{$}", home_handler)
 	mux.Handle("GET /goals", goals_get_handler)
 	mux.Handle("POST /goals", goals_post_handler)
+	mux.Handle("POST /logout", logout_post_handler)
 	mux.HandleFunc("GET /ping", handlePing)
 	mux.HandleFunc("GET /login", handleLoginGet)
 	mux.HandleFunc("POST /login", handleLoginPost(db))

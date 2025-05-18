@@ -3,6 +3,13 @@ const goalInputTableBody = goalInputTable.querySelector("tbody");
 const submitButton = document.getElementById("submit-button");
 const goalDisplayLoadingSpinner = document.getElementsByClassName("loading-spinner")[0].cloneNode(false);
 
+/**
+ * @param {String} name
+ */
+function deleteCookie(name){
+  document.cookie = name + "=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;"
+}
+
 loadGoalDisplayTable();
 
 function getLocalDateString(){
@@ -21,8 +28,11 @@ function getLocalDateString(){
   return str;
 }
 
-function logout(){
-  alert("see you bro");
+async function logout(){
+  await fetch("/logout", { method: "POST" });
+
+  deleteCookie("session_id");
+  window.location.replace("/login");
 }
 
 function resetGoalInputTable(){
