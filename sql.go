@@ -89,8 +89,8 @@ func GetUser(db *sql.DB, username string) (*User, error) {
 
 type Goal struct {
 	title string
-	start_date *time.Time
-	end_date *time.Time
+	start_date string
+	end_date string
 	completed_datetime *time.Time
 	notes string
 }
@@ -142,6 +142,12 @@ func GetGoals(
 			&goal.completed_datetime,
 			&goal.notes,
 		)
+
+		//because postgres returns DATE types as a datetime string,
+		//manually getting just the date string so that it can be
+		//parsed into user's timezone as just date
+		goal.start_date = goal.end_date[:10]
+		goal.end_date = goal.end_date[:10]
 
 		if err != nil {
 			return nil, err

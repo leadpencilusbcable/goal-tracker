@@ -13,7 +13,7 @@
       <button id="navbar-logout" onclick="logout()">Log Out</button>
     </nav>
     <main style="display: flex; margin-top: 18px;">
-      <div id="goal-display-container" style="display: flex; width: 50%;">
+      <div id="goal-display-container" style="display: flex; flex-direction: column; width: 50%;">
         <div class="loading-spinner" style="height: 40px; width: 40px; align-self: center; margin: auto;"></div>
       </div>
       <form id="goal-form" action="/goals" method="post" onsubmit="submitGoals(event)">

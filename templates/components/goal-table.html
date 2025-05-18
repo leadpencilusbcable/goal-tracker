@@ -2,6 +2,7 @@
   <caption style="font-size: 25px; text-align: left; margin-bottom: 10px;">
     Goals ending {{.StartDate}} - {{.EndDate}}
   </caption>
+  {{if .GoalDisplay}}
   <thead>
     <tr>
       <th align="left">Title</th>
@@ -22,5 +23,11 @@
     </tr>
   {{end}}
   </tbody>
+  {{end}}
 </table>
+{{if not .GoalDisplay}}
+  <p style="margin-left: 2px;">
+    No goals.
+  </p>
+{{end}}
 

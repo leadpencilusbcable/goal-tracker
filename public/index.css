@@ -57,10 +57,12 @@ td input, textarea {
 
 #goal-display-table {
   width: 75%;
+  table-layout: fixed;
 }
 
 #goal-display-table td {
   font-size: 14px;
+  word-wrap: break-word;
 }
 
 #goal-display-table {

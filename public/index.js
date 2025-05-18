@@ -44,7 +44,10 @@ function resetGoalInputTable(){
 }
 
 async function loadGoalDisplayTable(){
-  const res = await fetch("/goals");
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const url =  "/goals?timezone=" + timezone;
+
+  const res = await fetch(url);
 
   const container = document.getElementById("goal-display-container");
 
@@ -76,7 +79,6 @@ async function submitGoals(event){
   for(let i = 0; i < formData.getAll("title").length; i++){
     formData.append("start", today_date_str);
   }
-
   const urlFormData = new URLSearchParams(formData);
 
   const res = await fetch(form.action, {

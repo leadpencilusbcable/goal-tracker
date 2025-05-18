@@ -423,21 +423,6 @@ type GoalDisplay struct {
 	DueDate string
 }
 
-func goalsToDisplayGoals(goals []Goal) []GoalDisplay {
-	goal_display := make([]GoalDisplay, len(goals))
-
-	for i, goal := range goals {
-		goal_display[i] = GoalDisplay{
-			Title: goal.title,
-			Status: "",
-			Notes: goal.notes,
-			StartDate: goal.start_date.Format("2006-01-02"),
-			DueDate: goal.end_date.Format("2006-01-02"),
-		}
-	}
-
-	return goal_display
-}
 
 type GoalDisplayTemplate struct {
 	StartDate string
@@ -510,12 +495,64 @@ func initialiseTemplates() *template.Template {
 	return templates
 }
 
+func getGoalStatus(goal Goal, now *time.Time, loc *time.Location) (string, error) {
+	if goal.completed_datetime != nil {
+		return "Complete", nil
+	}
+
+	end_date, err := time.ParseInLocation(time.DateOnly, goal.end_date, loc)
+
+	if err != nil {
+		return "", err
+	}
+
+	end_date = end_date.Add(time.Hour * 24)
+
+	if now.After(end_date) {
+		return "Failed", nil
+	} else {
+		return "In progress", nil
+	}
+}
+
+func goalsToDisplayGoals(goals []Goal, now *time.Time, loc *time.Location) ([]GoalDisplay, error) {
+	goal_display := make([]GoalDisplay, len(goals))
+
+	for i, goal := range goals {
+		status, err := getGoalStatus(goal, now, loc)
+
+		if err != nil {
+			return nil, err
+		}
+
+		goal_display[i] = GoalDisplay{
+			Title: goal.title,
+			Status: status,
+			Notes: goal.notes,
+			StartDate: goal.start_date,
+			DueDate: goal.end_date,
+		}
+	}
+
+	return goal_display, nil
+}
+
 func handleGoalsGet(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		timezones, ok := r.URL.Query()["timezone"]
+		timezone := "UTC"
+
+		if ok || len(timezones) > 0 {
+			timezone = timezones[0]
+		}
+
+		loc, err := time.LoadLocation(timezone)
+
 		username := r.Context().Value("username").(string)
 
-		start := time.Now()
-		end := time.Now().Add(time.Hour * 24 * 7)
+		now := time.Now().In(loc)
+		start := now
+		end := start.Add(time.Hour * 24 * 7)
 
 		goals, err := GetGoals(
 			db,
@@ -537,17 +574,23 @@ func handleGoalsGet(db *sql.DB) http.HandlerFunc {
 		}
 
 		slog.Debug(
-			"goals for user",
-			"goals", goals,
+			"goal count for user",
+			"goals", len(goals),
 			"username", username,
 		)
 
-		if len(goals) == 0 {
-			w.WriteHeader(http.StatusNoContent)
+		goal_display, err := goalsToDisplayGoals(goals, &now, loc)
+
+		if err != nil {
+			slog.Error(
+				"error constructing display goals",
+				"err", err.Error(),
+				"response_code", http.StatusInternalServerError,
+			)
+
+			http.Error(w, "error retrieving goals", http.StatusInternalServerError)
 			return
 		}
-
-		goal_display := goalsToDisplayGoals(goals)
 
 		template_data := GoalDisplayTemplate{
 			StartDate: start.Format("2006-01-02"),
