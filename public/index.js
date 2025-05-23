@@ -4,17 +4,41 @@ const submitButton = document.getElementById("submit-button");
 const goalDisplayLoadingSpinner = document.getElementsByClassName("loading-spinner")[0].cloneNode(false);
 
 /**
+ * @typedef GoalParams
+ * @type {object}
+ * @property {Date} start
+ * @property {Date} end
+ */
+
+/** @type {GoalParams} */
+let goalParams;
+
+function init(){
+  const now = new Date();
+  const nowPlusOneWeek = addDaysToDate(now, 7);
+
+  goalParams = {
+    start: now,
+    end: nowPlusOneWeek,
+  };
+
+  loadGoalDisplayTable(goalParams);
+}
+
+init();
+
+/**
  * @param {String} name
  */
 function deleteCookie(name){
   document.cookie = name + "=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;"
 }
 
-loadGoalDisplayTable();
 
-function getLocalDateString(){
-  const date = new Date();
-
+/**
+ * @param {Date} date
+ */
+function getLocalDateString(date){
   const day = date.getDate();
   const month = date.getMonth();
   const year = date.getFullYear();
@@ -26,6 +50,16 @@ function getLocalDateString(){
   );
 
   return str;
+}
+
+/**
+ * @param {Date} date
+ * @param {Number} days
+ */
+function addDaysToDate(date, days){
+  const newDate = new Date(date);
+  newDate.setDate(date.getDate() + days);
+  return newDate;
 }
 
 async function logout(){
@@ -53,26 +87,32 @@ function resetGoalInputTable(){
   }
 }
 
-async function loadGoalDisplayTable(){
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const url =  "/goals?timezone=" + timezone;
+/**
+ * @param {GoalParams} goalParams
+ */
+async function loadGoalDisplayTable(goalParams){
+  const now = new Date();
+
+  const url =
+    "/goals?start=" +
+    getLocalDateString(goalParams.start) +
+    "&end=" +
+    getLocalDateString(goalParams.end) +
+    "&now=" +
+    getLocalDateString(now);
 
   const res = await fetch(url);
 
   const container = document.getElementById("goal-display-container");
 
-  if(res.status === 204) {
-    container.innerHTML = "No goals.";
-  } else {
-    container.innerHTML = await res.text();
-  }
+  container.innerHTML = await res.text();
 }
 
 async function refreshDisplayTable(){
   const container = document.getElementById("goal-display-container");
   container.replaceChildren(goalDisplayLoadingSpinner);
 
-  loadGoalDisplayTable();
+  loadGoalDisplayTable(goalParams);
 }
 
 /**
@@ -84,7 +124,7 @@ async function submitGoals(event){
   const form = event.target;
   const formData = new FormData(form);
 
-  const today_date_str = getLocalDateString();
+  const today_date_str = getLocalDateString(new Date());
 
   for(let i = 0; i < formData.getAll("title").length; i++){
     formData.append("start", today_date_str);

@@ -526,18 +526,16 @@ func initialiseTemplates() *template.Template {
 	return templates
 }
 
-func getGoalStatus(goal Goal, now *time.Time, loc *time.Location) (string, error) {
+func getGoalStatus(goal Goal, now *time.Time) (string, error) {
 	if goal.completed_datetime != nil {
 		return "Complete", nil
 	}
 
-	end_date, err := time.ParseInLocation(time.DateOnly, goal.end_date, loc)
+	end_date, err := time.Parse(time.DateOnly, goal.end_date)
 
 	if err != nil {
 		return "", err
 	}
-
-	end_date = end_date.Add(time.Hour * 24)
 
 	if now.After(end_date) {
 		return "Failed", nil
@@ -546,11 +544,11 @@ func getGoalStatus(goal Goal, now *time.Time, loc *time.Location) (string, error
 	}
 }
 
-func goalsToDisplayGoals(goals []Goal, now *time.Time, loc *time.Location) ([]GoalDisplay, error) {
+func goalsToDisplayGoals(goals []Goal, now *time.Time) ([]GoalDisplay, error) {
 	goal_display := make([]GoalDisplay, len(goals))
 
 	for i, goal := range goals {
-		status, err := getGoalStatus(goal, now, loc)
+		status, err := getGoalStatus(goal, now)
 
 		if err != nil {
 			return nil, err
@@ -568,28 +566,84 @@ func goalsToDisplayGoals(goals []Goal, now *time.Time, loc *time.Location) ([]Go
 	return goal_display, nil
 }
 
+func parseGetGoalParams(params url.Values) (
+	err error,
+	status_code int,
+	start *time.Time,
+	end *time.Time,
+	now *time.Time,
+) {
+	starts, ok := params["start"]
+
+	if !ok || starts == nil || len(starts) == 0 {
+		err = errors.New("Missing start param")
+		status_code = http.StatusBadRequest
+		return
+	}
+
+	ends, ok := params["end"]
+
+	if !ok || ends == nil || len(ends) == 0 {
+		err = errors.New("Missing end param")
+		status_code = http.StatusBadRequest
+		return
+	}
+
+	nows, ok := params["now"]
+
+	if !ok || nows == nil || len(nows) == 0 {
+		err = errors.New("Missing now param")
+		status_code = http.StatusBadRequest
+		return
+	}
+
+	start_date, err := time.Parse(time.DateOnly, starts[0])
+
+	if err != nil {
+		err = errors.New("Malformed start param")
+		status_code = http.StatusUnprocessableEntity
+		return
+	}
+
+	end_date, err := time.Parse(time.DateOnly, ends[0])
+
+	if err != nil {
+		err = errors.New("Malformed end param")
+		status_code = http.StatusUnprocessableEntity
+		return
+	}
+
+	now_date, err := time.Parse(time.DateOnly, nows[0])
+
+	if err != nil {
+		err = errors.New("Malformed now param")
+		status_code = http.StatusUnprocessableEntity
+		return
+	}
+
+	start = &start_date
+	end = &end_date
+	now = &now_date
+
+	return
+}
+
 func handleGoalsGet(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		timezones, ok := r.URL.Query()["timezone"]
-		timezone := "UTC"
+		err, status_code, start, end, now := parseGetGoalParams(r.URL.Query())
 
-		if ok || len(timezones) > 0 {
-			timezone = timezones[0]
+		if err != nil {
+			http.Error(w, err.Error(), status_code)
+			return
 		}
 
-		loc, err := time.LoadLocation(timezone)
-
 		username := r.Context().Value("username").(string)
-
-		now := time.Now().In(loc)
-		start := now
-		end := start.Add(time.Hour * 24 * 7)
 
 		goals, err := GetGoals(
 			db,
 			username,
-			&start,
-			&end,
+			start,
+			end,
 			nil,
 		)
 
@@ -610,7 +664,7 @@ func handleGoalsGet(db *sql.DB) http.HandlerFunc {
 			"username", username,
 		)
 
-		goal_display, err := goalsToDisplayGoals(goals, &now, loc)
+		goal_display, err := goalsToDisplayGoals(goals, now)
 
 		if err != nil {
 			slog.Error(

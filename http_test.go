@@ -6,17 +6,11 @@ import (
 )
 
 func TestGoalStatus(t *testing.T) {
-	loc, err := time.LoadLocation("UTC")
-
-	if err != nil {
-		t.Errorf("error parsing UTC location. %s", err.Error())
-	}
-
-	now := time.Now().In(loc)
+	now := time.Now()
 	now_date_str := now.Format(time.DateOnly)
 
 	goal := Goal{ end_date: now_date_str }
-	status, err := getGoalStatus(goal, &now, loc)
+	status, err := getGoalStatus(goal, &now)
 
 	if err != nil {
 		t.Errorf("error determining goal status. %s", err.Error())
@@ -26,7 +20,7 @@ func TestGoalStatus(t *testing.T) {
 
 	yesterday := now.Add(-time.Hour * 24)
 	goal.end_date = yesterday.Format(time.DateOnly)
-	status, err = getGoalStatus(goal, &now, loc)
+	status, err = getGoalStatus(goal, &now)
 
 	if err != nil {
 		t.Errorf("error determining goal status. %s", err.Error())
@@ -35,7 +29,7 @@ func TestGoalStatus(t *testing.T) {
 	}
 
 	goal.completed_datetime = &now
-	status, err = getGoalStatus(goal, &yesterday, loc)
+	status, err = getGoalStatus(goal, &yesterday)
 
 	if status != "Complete" {
 		t.Errorf("expected status Complete. Got:  %s", status)
