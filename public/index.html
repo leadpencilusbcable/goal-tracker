@@ -13,8 +13,33 @@
       <button id="navbar-logout" onclick="logout()">Log Out</button>
     </nav>
     <main style="display: flex; margin-top: 18px;">
-      <div id="goal-display-container" style="display: flex; flex-direction: column; width: 50%;">
+      <div id="goal-display-container" style="display: flex; width: 60%;">
         <div class="loading-spinner" style="height: 40px; width: 40px; align-self: center; margin: auto;"></div>
+        <div style="margin-left: 20px;">
+          <p style="margin-top: 4px; font-size: 20px;">Filters</p>
+          <div>
+            <div>
+              <label>Start</label>
+              <input
+                id="start-filter"
+                type="date"
+                style="margin-left: 7px;"
+                disabled
+                onchange="startFilterOnChange(event)"
+              >
+            </div>
+            <div>
+              <label>End</label>
+              <input
+                id="end-filter"
+                type="date"
+                style="margin-left: 16px; margin-top: 7px;"
+                disabled
+                onchange="endFilterOnChange(event)"
+              >
+            </div>
+          </div>
+        </div>
       </div>
       <form id="goal-form" action="/goals" method="post" onsubmit="submitGoals(event)">
         <table id="goal-input-table">

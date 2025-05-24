@@ -2,6 +2,24 @@ const goalInputTable = document.getElementById("goal-input-table");
 const goalInputTableBody = goalInputTable.querySelector("tbody");
 const submitButton = document.getElementById("submit-button");
 const goalDisplayLoadingSpinner = document.getElementsByClassName("loading-spinner")[0].cloneNode(false);
+const startFilter = document.getElementById("start-filter");
+const endFilter = document.getElementById("end-filter");
+
+/**
+ * @param {Event} event
+ */
+function startFilterOnChange(event) {
+  goalParams.start = event.target.value;
+  refreshDisplayTable();
+}
+
+/**
+ * @param {Event} event
+ */
+function endFilterOnChange(event) {
+  goalParams.end = event.target.value;
+  refreshDisplayTable();
+}
 
 /**
  * @typedef GoalParams
@@ -17,9 +35,15 @@ function init(){
   const now = new Date();
   const nowPlusOneWeek = addDaysToDate(now, 7);
 
+  const start = getLocalDateString(now);
+  const end = getLocalDateString(nowPlusOneWeek);
+
+  startFilter.value = start;
+  endFilter.value = end;
+
   goalParams = {
-    start: now,
-    end: nowPlusOneWeek,
+    start,
+    end,
   };
 
   loadGoalDisplayTable(goalParams);
@@ -33,7 +57,6 @@ init();
 function deleteCookie(name){
   document.cookie = name + "=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;"
 }
-
 
 /**
  * @param {Date} date
@@ -91,26 +114,31 @@ function resetGoalInputTable(){
  * @param {GoalParams} goalParams
  */
 async function loadGoalDisplayTable(goalParams){
+  startFilter.setAttribute("disabled", "");
+  endFilter.setAttribute("disabled", "");
+
   const now = new Date();
 
   const url =
     "/goals?start=" +
-    getLocalDateString(goalParams.start) +
+    goalParams.start +
     "&end=" +
-    getLocalDateString(goalParams.end) +
+    goalParams.end +
     "&now=" +
     getLocalDateString(now);
 
   const res = await fetch(url);
 
   const container = document.getElementById("goal-display-container");
+  container.children[0].outerHTML = await res.text();
 
-  container.innerHTML = await res.text();
+  startFilter.removeAttribute("disabled");
+  endFilter.removeAttribute("disabled");
 }
 
-async function refreshDisplayTable(){
-  const container = document.getElementById("goal-display-container");
-  container.replaceChildren(goalDisplayLoadingSpinner);
+function refreshDisplayTable(){
+  const table = document.getElementById("goal-display-table");
+  table.replaceWith(goalDisplayLoadingSpinner);
 
   loadGoalDisplayTable(goalParams);
 }
