@@ -93,6 +93,7 @@ type Goal struct {
 	end_date string
 	completed_datetime *time.Time
 	notes string
+	status string
 }
 
 func GetGoals(
@@ -100,7 +101,6 @@ func GetGoals(
 	username string,
 	start_date *time.Time,
 	end_date *time.Time,
-	title *string,
 ) ([]Goal, error) {
 	if start_date == nil {
 		return nil, errors.New("start_date cannot be nil")

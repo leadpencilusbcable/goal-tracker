@@ -4,11 +4,12 @@ const submitButton = document.getElementById("submit-button");
 const goalDisplayLoadingSpinner = document.getElementsByClassName("loading-spinner")[0].cloneNode(false);
 const startFilter = document.getElementById("start-filter");
 const endFilter = document.getElementById("end-filter");
+const statusCheckboxes = document.getElementsByName("status");
 
 /**
  * @param {Event} event
  */
-function startFilterOnChange(event) {
+function startFilterOnChange(event){
   goalParams.start = event.target.value;
   refreshDisplayTable();
 }
@@ -16,8 +17,35 @@ function startFilterOnChange(event) {
 /**
  * @param {Event} event
  */
-function endFilterOnChange(event) {
+function endFilterOnChange(event){
   goalParams.end = event.target.value;
+  refreshDisplayTable();
+}
+
+/**
+ * @param {"In progress" | "Complete" | "Failed"} status
+ */
+function statusFilterOnChange(status){
+  let checkedCount = 0;
+
+  for(let i = 0; i < 3; i++){
+    if(goalParams.statuses[i]){
+      checkedCount++;
+    }
+  }
+
+  let statusIndex = 0;
+
+  if(status == "Complete") statusIndex = 1;
+  else if(status == "Failed") statusIndex = 2;
+
+  //if there is only 1 checkbox checked, don't allow uncheck
+  if(checkedCount === 1 && goalParams.statuses[statusIndex]){
+    statusCheckboxes[statusIndex].checked = true;
+    return;
+  }
+
+  goalParams.statuses[statusIndex] = !goalParams.statuses[statusIndex];
   refreshDisplayTable();
 }
 
@@ -26,6 +54,7 @@ function endFilterOnChange(event) {
  * @type {object}
  * @property {Date} start
  * @property {Date} end
+ * @property {Boolean[]} statuses
  */
 
 /** @type {GoalParams} */
@@ -41,9 +70,18 @@ function init(){
   startFilter.value = start;
   endFilter.value = end;
 
+  const statuses = [false, false, false];
+
+  for(let i = 0; i < statusCheckboxes.length; i++){
+    if(statusCheckboxes[i].checked){
+      statuses[i] = true;
+    }
+  }
+
   goalParams = {
     start,
     end,
+    statuses,
   };
 
   loadGoalDisplayTable(goalParams);
@@ -119,7 +157,7 @@ async function loadGoalDisplayTable(goalParams){
 
   const now = new Date();
 
-  const url =
+  let url =
     "/goals?start=" +
     goalParams.start +
     "&end=" +
@@ -127,10 +165,20 @@ async function loadGoalDisplayTable(goalParams){
     "&now=" +
     getLocalDateString(now);
 
+  if(goalParams.statuses[0]){
+    url += "&status=In progress";
+  }
+  if(goalParams.statuses[1]){
+    url += "&status=Complete";
+  }
+  if(goalParams.statuses[2]){
+    url += "&status=Failed";
+  }
+
   const res = await fetch(url);
 
   const container = document.getElementById("goal-display-container");
-  container.children[0].outerHTML = await res.text();
+  container.innerHTML = await res.text();
 
   startFilter.removeAttribute("disabled");
   endFilter.removeAttribute("disabled");

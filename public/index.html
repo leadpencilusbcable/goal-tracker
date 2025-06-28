@@ -13,31 +13,50 @@
       <button id="navbar-logout" onclick="logout()">Log Out</button>
     </nav>
     <main style="display: flex; margin-top: 18px;">
-      <div id="goal-display-container" style="display: flex; width: 60%;">
-        <div class="loading-spinner" style="height: 40px; width: 40px; align-self: center; margin: auto;"></div>
+      <div style="display: flex; width: 60%;">
+        <div id="goal-display-container" style="display: flex; flex-direction: column; width: 80%;">
+          <div class="loading-spinner" style="height: 40px; width: 40px; align-self: center; margin: auto;"></div>
+        </div>
         <div style="margin-left: 20px;">
           <p style="margin-top: 4px; font-size: 20px;">Filters</p>
           <div>
             <div>
               <label>Start</label>
               <input
-                id="start-filter"
-                type="date"
-                style="margin-left: 7px;"
-                disabled
-                onchange="startFilterOnChange(event)"
-              >
+                  id="start-filter"
+                  type="date"
+                  style="margin-left: 7px;"
+                  disabled
+                  onchange="startFilterOnChange(event)"
+                  >
             </div>
-            <div>
-              <label>End</label>
-              <input
-                id="end-filter"
-                type="date"
-                style="margin-left: 16px; margin-top: 7px;"
-                disabled
-                onchange="endFilterOnChange(event)"
-              >
-            </div>
+              <div>
+                <label>End</label>
+                <input
+                    id="end-filter"
+                    type="date"
+                    style="margin-left: 16px; margin-top: 7px;"
+                    disabled
+                    onchange="endFilterOnChange(event)"
+                    >
+              </div>
+                <div style="margin-top: 8px;">
+                  <label>Status</label>
+                  <div style="margin-top: 7px; margin-left: 6px;">
+                    <div>
+                      <input type="checkbox" name="status" value="In progress" checked onclick="statusFilterOnChange('In progress')">
+                      <label for="status1">In progress</label>
+                    </div>
+                    <div>
+                      <input type="checkbox" name="status" value="Complete" onclick="statusFilterOnChange('Complete')">
+                      <label for="status2">Complete</label>
+                    </div>
+                    <div>
+                      <input type="checkbox" name="status" value="Failed" onclick="statusFilterOnChange('Failed')">
+                      <label for="status3">Failed</label>
+                    </div>
+                  </div>
+                </div>
           </div>
         </div>
       </div>

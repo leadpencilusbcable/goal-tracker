@@ -179,7 +179,6 @@ func handleLoginGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(content)
-	return
 }
 
 func handleLogoutPost(db *sql.DB) http.HandlerFunc {
@@ -544,26 +543,20 @@ func getGoalStatus(goal Goal, now *time.Time) (string, error) {
 	}
 }
 
-func goalsToDisplayGoals(goals []Goal, now *time.Time) ([]GoalDisplay, error) {
+func goalsToDisplayGoals(goals []Goal) []GoalDisplay {
 	goal_display := make([]GoalDisplay, len(goals))
 
 	for i, goal := range goals {
-		status, err := getGoalStatus(goal, now)
-
-		if err != nil {
-			return nil, err
-		}
-
 		goal_display[i] = GoalDisplay{
 			Title: goal.title,
-			Status: status,
+			Status: goal.status,
 			Notes: goal.notes,
 			StartDate: goal.start_date,
 			DueDate: goal.end_date,
 		}
 	}
 
-	return goal_display, nil
+	return goal_display
 }
 
 func parseGetGoalParams(params url.Values) (
@@ -572,6 +565,9 @@ func parseGetGoalParams(params url.Values) (
 	start *time.Time,
 	end *time.Time,
 	now *time.Time,
+	inprogress bool,
+	complete bool,
+	failed bool,
 ) {
 	starts, ok := params["start"]
 
@@ -593,6 +589,14 @@ func parseGetGoalParams(params url.Values) (
 
 	if !ok || nows == nil || len(nows) == 0 {
 		err = errors.New("Missing now param")
+		status_code = http.StatusBadRequest
+		return
+	}
+
+	statuses, ok := params["status"]
+
+	if !ok || statuses == nil || len(statuses) == 0 {
+		err = errors.New("Missing status param")
 		status_code = http.StatusBadRequest
 		return
 	}
@@ -625,12 +629,64 @@ func parseGetGoalParams(params url.Values) (
 	end = &end_date
 	now = &now_date
 
+	inprogress = false
+	complete = false
+	failed = false
+
+	for _, status := range statuses {
+		switch status {
+		case "In progress":
+			inprogress = true
+		case "Complete":
+			complete = true
+		case "Failed":
+			failed = true
+		}
+	}
+
+	if !inprogress && !complete && !failed {
+		err = errors.New("At least one status param must be passed containing either 'In progress', 'Complete', 'Failed'")
+		status_code = http.StatusUnprocessableEntity
+		return
+	}
+
 	return
+}
+
+func filterGoalsByStatus(goals []Goal, now *time.Time, inprogress, complete, failed bool) (*[]Goal, error) {
+	filtered_goals := make([]Goal, 0, len(goals))
+
+	for i := 0; i < len(goals); i++ {
+		goal := goals[i]
+
+		status, err := getGoalStatus(goal, now)
+
+		if err != nil {
+			return nil, err
+		}
+
+		goal.status = status
+
+		if (status == "In progress" && inprogress) ||
+		(status == "Complete" && complete) ||
+		(status == "Failed" && failed) {
+			filtered_goals = append(filtered_goals, goal)
+		}
+	}
+
+	return &filtered_goals, nil
 }
 
 func handleGoalsGet(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err, status_code, start, end, now := parseGetGoalParams(r.URL.Query())
+		err,
+		status_code,
+		start,
+		end,
+		now,
+		inprogress,
+		complete,
+		failed := parseGetGoalParams(r.URL.Query())
 
 		if err != nil {
 			http.Error(w, err.Error(), status_code)
@@ -639,12 +695,11 @@ func handleGoalsGet(db *sql.DB) http.HandlerFunc {
 
 		username := r.Context().Value("username").(string)
 
-		goals, err := GetGoals(
+		db_goals, err := GetGoals(
 			db,
 			username,
 			start,
 			end,
-			nil,
 		)
 
 		if err != nil {
@@ -659,28 +714,36 @@ func handleGoalsGet(db *sql.DB) http.HandlerFunc {
 		}
 
 		slog.Debug(
-			"goal count for user",
-			"goals", len(goals),
+			"total goal count for user",
+			"goals", len(db_goals),
 			"username", username,
 		)
 
-		goal_display, err := goalsToDisplayGoals(goals, now)
+		filtered_goals, err := filterGoalsByStatus(db_goals, now, inprogress, complete, failed)
 
 		if err != nil {
 			slog.Error(
-				"error constructing display goals",
+				"error filtering goals",
 				"err", err.Error(),
 				"response_code", http.StatusInternalServerError,
 			)
 
-			http.Error(w, "error retrieving goals", http.StatusInternalServerError)
+			http.Error(w, "error filtering goals", http.StatusInternalServerError)
 			return
 		}
+
+		slog.Debug(
+			"filtered goal count for user",
+			"goals", len(*filtered_goals),
+			"username", username,
+		)
+
+		display_goals := goalsToDisplayGoals(*filtered_goals)
 
 		template_data := GoalDisplayTemplate{
 			StartDate: start.Format("2006-01-02"),
 			EndDate: end.Format("2006-01-02"),
-			GoalDisplay: goal_display,
+			GoalDisplay: display_goals,
 		}
 
 		buf := bytes.Buffer{}
