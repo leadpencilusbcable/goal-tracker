@@ -56,17 +56,24 @@ td input, textarea {
 }
 
 #goal-display-table {
-  width: 65%;
+  border-collapse: collapse;
+  flex-grow: 100;
+  height: fit-content;
+  margin-left: 100px;
   table-layout: fixed;
+}
+
+#goal-display-table tr, th {
+  height: 10px;
+}
+
+#goal-display-table td {
+  height: 40px;
 }
 
 #goal-display-table td {
   font-size: 14px;
   word-wrap: break-word;
-}
-
-#goal-display-table {
-  border-collapse: collapse;
 }
 
 #goal-display-table th, #goal-display-table td {
@@ -75,6 +82,7 @@ td input, textarea {
 
 #goal-input-table {
   border-collapse: collapse;
+  width: 100%;
 }
 
 #goal-input-table th, #goal-input-table td {
@@ -83,4 +91,24 @@ td input, textarea {
 
 th, td {
   padding: 10px;
+}
+
+#goal-input-table input[type="text"], #goal-input-table input[type="date"] {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+#main {
+  margin: 20px 10px;
+}
+
+.no-goal-text {
+  font-size: 20px;
+  margin-left: 5%;
+  margin-top: 0;
 }

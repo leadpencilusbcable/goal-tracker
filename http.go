@@ -738,6 +738,11 @@ func handleGoalsGet(db *sql.DB) http.HandlerFunc {
 			"username", username,
 		)
 
+		if len(*filtered_goals) == 0 {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		display_goals := goalsToDisplayGoals(*filtered_goals)
 
 		template_data := GoalDisplayTemplate{

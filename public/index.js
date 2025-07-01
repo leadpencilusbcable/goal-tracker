@@ -5,6 +5,8 @@ const goalDisplayLoadingSpinner = document.getElementsByClassName("loading-spinn
 const startFilter = document.getElementById("start-filter");
 const endFilter = document.getElementById("end-filter");
 const statusCheckboxes = document.getElementsByName("status");
+const viewButton = document.getElementById("view-button");
+const makeButton = document.getElementById("make-button");
 
 /**
  * @param {Event} event
@@ -50,6 +52,33 @@ function statusFilterOnChange(status){
 }
 
 /**
+ * @param {"view" | "make"} view
+ */
+function switchView(view){
+  const goalForm = document.getElementById("goal-form");
+  const goalView = document.getElementById("goal-view");
+
+  switch(view){
+    case "view":
+      viewButton.setAttribute("disabled", "");
+      makeButton.removeAttribute("disabled");
+
+      goalForm.hidden = true;
+      goalView.hidden = false;
+
+      break;
+    case "make":
+      makeButton.setAttribute("disabled", "");
+      viewButton.removeAttribute("disabled");
+
+      goalView.hidden = true;
+      goalForm.hidden = false;
+
+      break;
+  }
+}
+
+/**
  * @typedef GoalParams
  * @type {object}
  * @property {Date} start
@@ -61,6 +90,8 @@ function statusFilterOnChange(status){
 let goalParams;
 
 function init(){
+  viewButton.setAttribute("disabled", "");
+
   const now = new Date();
   const nowPlusOneWeek = addDaysToDate(now, 7);
 
@@ -139,7 +170,7 @@ function resetGoalInputTable(){
         <td><input type="text" name="title" required/></td>
         <td><textarea rows="1" name="notes"/></textarea></td>
         <td><input type="date" name="due" required/></td>
-        <td>
+        <td style='text-align: center;'>
           <button class="minus-button" disabled onclick="removeRowFromGoalTable(this)" type="button">&minus;</button>
         </td>`;
     } else {
@@ -154,6 +185,10 @@ function resetGoalInputTable(){
 async function loadGoalDisplayTable(goalParams){
   startFilter.setAttribute("disabled", "");
   endFilter.setAttribute("disabled", "");
+
+  for(let i = 0; i < statusCheckboxes.length; i++){
+    statusCheckboxes[i].setAttribute("disabled", "");
+  }
 
   const now = new Date();
 
@@ -175,18 +210,27 @@ async function loadGoalDisplayTable(goalParams){
     url += "&status=Failed";
   }
 
+  const loadingSpinner = document.getElementsByClassName("loading-spinner")[0];
   const res = await fetch(url);
 
-  const container = document.getElementById("goal-display-container");
-  container.innerHTML = await res.text();
+  if(res.status === 204){
+    loadingSpinner.outerHTML = "<p class='no-goal-text'>No goals</p>";
+  } else {
+    loadingSpinner.outerHTML = await res.text();
+  }
 
   startFilter.removeAttribute("disabled");
   endFilter.removeAttribute("disabled");
+
+  for(let i = 0; i < statusCheckboxes.length; i++){
+    statusCheckboxes[i].removeAttribute("disabled");
+  }
 }
 
 function refreshDisplayTable(){
-  const table = document.getElementById("goal-display-table");
-  table.replaceWith(goalDisplayLoadingSpinner);
+  const container = document.getElementById("display-container");
+  container.innerHTML = '';
+  container.appendChild(goalDisplayLoadingSpinner);
 
   loadGoalDisplayTable(goalParams);
 }
@@ -235,7 +279,7 @@ function addRowToGoalTable(){
     <td><input type="text" name="title" required/></td>
     <td><textarea rows="1" name="notes"/></textarea></td>
     <td><input type="date" name="due" required/></td>
-    <td>
+    <td style='text-align: center;'>
       <button class="minus-button" onclick="removeRowFromGoalTable(this)" type="button">&minus;</button>
     </td>`;
 
